@@ -305,16 +305,27 @@ bool EDPStaticProperty::fromProperty(
         ss.clear();
         ss.str(std::string());
         ss << prop.second;
-        size_t count = std::count(prop.second.begin(), prop.second.end(), '.');
-        int value = 0;
-        char ch = 0;
+        // (CWE-193): Validate the delimiter count and each value to ensure the EntityId does not exceed its 4 elements
+        const size_t count = std::count(prop.second.begin(), prop.second.end(), '.');
+        if (count >= sizeof(m_entityId.value))
+        {
+            return false;
+        }
         for (size_t it = 0; it <= count; ++it)
         {
-            ss >> value;
-            m_entityId.value[3 - (count - it)] = (octet)value;
+            int value = 0;
+            if (!(ss >> value) || value < 0 || value > 0xff)
+            {
+                return false;
+            }
+            m_entityId.value[(sizeof(m_entityId.value) - 1u - count) + it] = static_cast<octet>(value);
             if (it != count)
             {
-                ss >> ch;
+                char ch = 0;
+                if (!(ss >> ch) || ch != '.')
+                {
+                    return false;
+                }
             }
         }
         return true;

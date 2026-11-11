@@ -29,9 +29,16 @@ bool ChainingTransport::OpenInputChannel(
 
     if (iterator == receiver_resources_.end())
     {
-        ChainingReceiverResource* receiver_resource = new ChainingReceiverResource(*this, receiver_interface);
-        receiver_resources_.emplace(loc, receiver_resource);
-        return low_level_transport_->OpenInputChannel(loc, receiver_resource, max_message_size);
+        // (CWE-401):Manage receiver_resource via RAII to prevent leaks when OpenInputChannel fails.
+        std::unique_ptr<ChainingReceiverResource> receiver_resource(new ChainingReceiverResource(*this,
+                receiver_interface));
+        receiver_resources_.emplace(loc, receiver_resource.get());
+        if (!low_level_transport_->OpenInputChannel(loc, receiver_resource.get(), max_message_size))
+        {
+            receiver_resources_.erase(loc);
+            return false;
+        }
+        receiver_resource.release();
     }
 
     return true;

@@ -688,7 +688,14 @@ XMLP_ret XMLEndpointParser::loadXMLWriterEndpoint(
             }
             int strength = 0;
             element->QueryIntAttribute(STRENGTH, &strength);
-            wdata->m_qos.m_ownershipStrength.value = strength;
+            // (CWE-195):Validate that ownership strength is positive
+            if (strength < 0)
+            {
+                logError(RTPS_EDP, "Ownership strength should be greater than or equal to 0");
+                delete(wdata);
+                return XMLP_ret::XML_ERROR;
+            }
+            wdata->m_qos.m_ownershipStrength.value = static_cast<uint32_t>(strength);
         }
         else if (key == PARTITION_QOS)
         {

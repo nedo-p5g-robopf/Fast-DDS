@@ -231,9 +231,9 @@ void XMLProfileManager::loadDefaultXMLFile()
         }
         else
         {
-            strcat(absolute_path, "/");
-            strcat(absolute_path, DEFAULT_FASTRTPS_PROFILES);
-            loadXMLFile(absolute_path, true);
+            // (CWE-120):Prevent buffer overflows by concatenating paths with std::string
+            std::string path = std::string(absolute_path) + "/" + DEFAULT_FASTRTPS_PROFILES;
+            loadXMLFile(path.c_str(), true);
         }
     }
 
