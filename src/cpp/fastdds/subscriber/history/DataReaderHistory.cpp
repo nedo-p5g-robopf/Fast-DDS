@@ -100,18 +100,28 @@ DataReaderHistory::DataReaderHistory(
     {
         get_key_object_ = type_->createData();
 
-        if (resource_limited_qos_.max_samples_per_instance < std::numeric_limits<int32_t>::max())
+        // (CWE-195):Validate that resource_limited_qos_.max_samples_per_instance is positive
+        if (resource_limited_qos_.max_samples_per_instance < std::numeric_limits<int32_t>::max()
+                && resource_limited_qos_.max_samples_per_instance > 0)
         {
-            key_changes_allocation_.maximum = resource_limited_qos_.max_samples_per_instance;
+            key_changes_allocation_.maximum = static_cast<size_t>(resource_limited_qos_.max_samples_per_instance);
         }
     }
     else
     {
         resource_limited_qos_.max_instances = 1;
         resource_limited_qos_.max_samples_per_instance = resource_limited_qos_.max_samples;
-        key_changes_allocation_.initial = resource_limited_qos_.allocated_samples;
-        key_changes_allocation_.maximum = resource_limited_qos_.max_samples;
 
+        // (CWE-195):Validate that resource_limited_qos_.allocated_samples is positive
+        if (resource_limited_qos_.allocated_samples > 0)
+        {
+            key_changes_allocation_.initial = static_cast<size_t>(resource_limited_qos_.allocated_samples);
+        }
+        // (CWE-195):Validate that resource_limited_qos_.max_samples is positive
+        if (resource_limited_qos_.max_samples > 0)
+        {
+            key_changes_allocation_.maximum = static_cast<size_t>(resource_limited_qos_.max_samples);
+        }
         instances_.emplace(c_InstanceHandle_Unknown,
                 std::make_shared<DataReaderInstance>(key_changes_allocation_, key_writers_allocation_));
         data_available_instances_[c_InstanceHandle_Unknown] = instances_[c_InstanceHandle_Unknown];

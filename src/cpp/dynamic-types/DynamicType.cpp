@@ -189,11 +189,22 @@ ReturnCode_t DynamicType::copy_from_builder(
 
         for (auto it = other->member_by_id_.begin(); it != other->member_by_id_.end(); ++it)
         {
-            DynamicTypeMember* newMember = new DynamicTypeMember(it->second);
-            newMember->set_parent(this);
-            is_key_defined_ |= newMember->key_annotation();
-            member_by_id_.insert(std::make_pair(newMember->get_id(), newMember));
-            member_by_name_.insert(std::make_pair(newMember->get_name(), newMember));
+            // (CWE-401): Manage DynamicTypeMember with RAII until registration in both maps is complete to prevent leaks on failure paths
+            std::unique_ptr<DynamicTypeMember> member(new DynamicTypeMember(it->second));
+            member->set_parent(this);
+            is_key_defined_ |= member->key_annotation();
+            auto by_id = member_by_id_.emplace(member->get_id(), member.get());
+            if (!by_id.second)
+            {
+                return ReturnCode_t::RETCODE_ERROR;
+            }
+            auto by_name = member_by_name_.emplace(member->get_name(), member.get());
+            if (!by_name.second)
+            {
+                member_by_id_.erase(by_id.first);
+                return ReturnCode_t::RETCODE_ERROR;
+            }
+            member.release();
         }
 
         return ReturnCode_t::RETCODE_OK;

@@ -70,7 +70,13 @@ struct SampleInfoPool
 
         if (free_items_.empty())
         {
-            result = used_items_.push_back(new SampleInfo());
+            // (CWE-401): Transfer ownership only if insertion into used_items_ succeeds to prevent leaks on push_back failure
+            std::unique_ptr<SampleInfo> item(new SampleInfo());
+            result = used_items_.push_back(item.get());
+            if (result)
+            {
+                item.release();
+            }
         }
         else
         {

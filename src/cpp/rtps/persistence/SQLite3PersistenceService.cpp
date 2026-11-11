@@ -27,6 +27,8 @@
 
 #include <sstream>
 
+#include <algorithm>
+
 namespace eprosima {
 namespace fastrtps {
 namespace rtps {
@@ -299,8 +301,15 @@ bool SQLite3PersistenceService::load_writer_from_storage(
             change->writerGUID = writer_guid;
             memcpy(change->instanceHandle.value, sqlite3_column_blob(load_writer_stmt_, 1), instance_size);
             change->sequenceNumber = identity.sequence_number();
-            change->serializedPayload.length = size;
-            memcpy(change->serializedPayload.data, sqlite3_column_blob(load_writer_stmt_, 2), size);
+            // (CWE-120):Validate source length and destination capacity
+            if (size < 0 || static_cast<uint32_t>(size) > change->serializedPayload.max_size)
+            {
+                change_pool->release_cache(change);
+                continue;
+            }
+            const unsigned char* src = static_cast<const unsigned char*>(sqlite3_column_blob(load_writer_stmt_, 2));
+            change->serializedPayload.length = static_cast<uint32_t>(size);
+            std::copy_n(src, size, static_cast<unsigned char*>(change->serializedPayload.data));
             change->writer_info.previous = nullptr;
             change->writer_info.next = nullptr;
             change->writer_info.num_sent_submessages = 0;

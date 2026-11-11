@@ -172,13 +172,32 @@ protected:
             assert(size > data_size());
 
             octet* old_buffer = buffer;
-            buffer = (octet*)realloc(buffer, size + data_offset);
+            /**
+             * (CWE-190):Validate that size + data_offset is less than or equal to the maximum value of size_t
+             * In 32-bit environments, size + data_offset may exceed the maximum value of size_t.
+             * With this fix, new_size cannot overflow (no integer wraparound), preventing undersized allocations.
+             **/
+            if (data_offset > std::numeric_limits<size_t>::max() - static_cast<size_t>(size))
+            {
+                return false;
+            }
+            size_t new_size = static_cast<size_t>(size) + data_offset;
+            buffer = (octet*)realloc(buffer, new_size);
             if (!buffer)
             {
                 buffer = old_buffer;
                 return false;
             }
-            memset(buffer + data_offset + data_size(), 0, (size - data_size()) * sizeof(octet));
+            // (CWE-787):Validate that the memset start offset and write length do not exceed the capacity
+            const size_t capacity = data_offset + size;
+            const size_t offset = data_offset + data_size();
+            const size_t length = (size - data_size()) * sizeof(octet);
+            if (offset > capacity || length > capacity - offset)
+            {
+                buffer = old_buffer;
+                return false;
+            }
+            memset(buffer + offset, 0, length);
             data_size(size);
             return true;
         }

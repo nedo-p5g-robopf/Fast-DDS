@@ -361,11 +361,15 @@ bool IPFinder::getAllMACAddress(
 
         if (ifr.ifr_hwaddr.sa_family != ARPHRD_ETHER)
         {
+            // (CWE-772):Close the fd to release the socket resource
+            close(fd);
             continue;
         }
 
         info_MAC mac;
         memcpy(mac.address, ifr.ifr_hwaddr.sa_data, 6);
+        // (CWE-772):Close the fd to release the socket resource
+        close(fd);
 
         if (std::find(macs->begin(), macs->end(), mac) == macs->end())
         {
