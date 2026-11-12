@@ -54,6 +54,9 @@ jobs:
         shell: bash
         run: |
           source /opt/ros/$ROS_DISTRO/setup.bash
+          df -h /dev/shm
+          rm -f /dev/shm/fastrtps*
+          df -h /dev/shm
           colcon test --ctest-args --repeat until-pass:1 --timeout 60 --label-exclude xfail 2>&1 > result/ros2_test.log
           colcon test-result --all --verbose 2>&1 > result/ros2_test_result.log
 
